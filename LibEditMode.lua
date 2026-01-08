@@ -1,4 +1,4 @@
-local MINOR = 9
+local MINOR = 12
 local lib = LibStub:NewLibrary('LibEditMode', MINOR)
 if not lib then
 	-- this or a newer version is already loaded
@@ -213,8 +213,14 @@ local function onEditModeChanged(_, layoutInfo)
 		-- update cache
 		lib.layoutCache = C_EditMode.GetLayouts().layouts
 
+		-- trigger callbacks
 		for _, callback in next, lib.anonCallbacksLayout do
 			securecallfunction(callback, layoutNames[activeLayout], activeLayout)
+		end
+
+		-- update dialog
+		if internal.dialog and internal.dialog.selection then
+			internal.dialog:Update(internal.dialog.selection)
 		end
 
 		-- TODO: we should update the position of the button here, let the user not deal with that
@@ -343,7 +349,7 @@ end
 --[[ LibEditMode:AddFrameSettings(_frame, settings_) ![](https://img.shields.io/badge/function-blue)
 Register extra settings that will be displayed in a dialog attached to the frame in the Edit Mode.
 
-* `frame`: frame widget already registered with [AddFrame](#libeditmodeaddframeframe-callback-default)
+* `frame`: frame widget already registered with [AddFrame](#libeditmodeaddframeframe-callback-default-)
 * `settings`: table containing [SettingObject](Types#settingobject) entries _(table, number indexed)_
 --]]
 function lib:AddFrameSettings(frame, settings)
@@ -354,13 +360,51 @@ function lib:AddFrameSettings(frame, settings)
 	lib.frameSettings[frame] = settings
 end
 
+--[[ LibEditMode:EnableFrameSetting(_frame, settingName_) ![](https://img.shields.io/badge/function-blue)
+Enables a setting on a frame.
+
+* `frame`: frame widget already registered with [AddFrame](#libeditmodeaddframeframe-callback-default-)
+* `settingName`: a setting already registered with [AddFrameSettings](#libeditmodeaddframesettingsframe-settings-)
+--]]
+function lib:EnableFrameSetting(frame, settingName)
+	local settings = internal:GetFrameSettings(frame)
+	if settings then
+		for _, setting in next, settings do
+			if setting.name == settingName then
+				setting.disabled = false
+				internal.dialog:Update(internal.dialog.selection)
+				break
+			end
+		end
+	end
+end
+
+--[[ LibEditMode:DisableFrameSetting(_frame, settingName_) ![](https://img.shields.io/badge/function-blue)
+Disables a setting on a frame.
+
+* `frame`: frame widget already registered with [AddFrame](#libeditmodeaddframeframe-callback-default-)
+* `settingName`: a setting already registered with [AddFrameSettings](#libeditmodeaddframesettingsframe-settings-)
+--]]
+function lib:DisableFrameSetting(frame, settingName)
+	local settings = internal:GetFrameSettings(frame)
+	if settings then
+		for _, setting in next, settings do
+			if setting.name == settingName then
+				setting.disabled = true
+				internal.dialog:Update(internal.dialog.selection)
+				break
+			end
+		end
+	end
+end
+
 --[[ LibEditMode:AddFrameSettingsButton(_frame, data_) ![](https://img.shields.io/badge/function-blue)
 
 > :warning: Deprecated. Please use [`LibEditMode:AddFrameSettingsButtons(frame, buttons)`](#libeditmodeaddframesettingsbuttonsframe-buttons-) instead.
 
 Register extra button that will be displayed in a dialog attached to the frame in the Edit Mode.
 
-* `frame`: frame widget already registered with [AddFrame](#libeditmodeaddframeframe-callback-default)
+* `frame`: frame widget already registered with [AddFrame](#libeditmodeaddframeframe-callback-default-)
 * `data`: [ButtonObject](Types#buttonobject) _(table)_
 --]]
 function lib:AddFrameSettingsButton(frame, data)
@@ -374,7 +418,7 @@ end
 --[[ LibEditMode:AddFrameSettingsButtons(_frame, buttons_) ![](https://img.shields.io/badge/function-blue)
 Register extra buttons that will be displayed in a dialog attached to the frame in the Edit Mode.
 
-* `frame`: frame widget already registered with [AddFrame](#libeditmodeaddframeframe-callback-default)
+* `frame`: frame widget already registered with [AddFrame](#libeditmodeaddframeframe-callback-default-)
 * `buttons`: table containing [ButtonObject](Types#buttonobject) entries _(table, number indexed)_
 --]]
 function lib:AddFrameSettingsButtons(frame, buttons)
@@ -384,6 +428,16 @@ function lib:AddFrameSettingsButtons(frame, buttons)
 
 	for _, button in next, buttons do
 		table.insert(lib.frameButtons[frame], button)
+	end
+end
+
+--[[ LibEditMode:RefreshFrameSettings(_frame_) ![](https://img.shields.io/badge/function-blue)
+Refresh the dialog attached to the frame.
+--]]
+function lib:RefreshFrameSettings(frame)
+	local selection = lib.frameSelections[frame]
+	if selection and internal.dialog and internal.dialog.selection == selection and internal.dialog:IsVisible() then
+		internal.dialog:Update(selection)
 	end
 end
 
@@ -409,6 +463,44 @@ function lib:AddSystemSettings(systemID, settings)
 
 	if not isManagerHooked then
 		hookManager()
+	end
+end
+
+--[[ LibEditMode:EnableSystemSetting(_systemID, settingName_) ![](https://img.shields.io/badge/function-blue)
+Enables a setting on a frame.
+
+* `systemID`: the ID of a system registered with the Edit Mode. See `Enum.EditModeSystem`.
+* `settingName`: a setting already registered with [AddSystemSettings](#libeditmodeaddsystemsettingssystemid-settings-)
+--]]
+function lib:EnableSystemSetting(systemID, settingName)
+	local settings = internal:GetSystemSettings(systemID)
+	if settings then
+		for _, setting in next, settings do
+			if setting.name == settingName then
+				setting.disabled = false
+				internal.extension:Update(internal.extension.systemID)
+				break
+			end
+		end
+	end
+end
+
+--[[ LibEditMode:DisableSystemSetting(_systemID, settingName_) ![](https://img.shields.io/badge/function-blue)
+Disables a setting on a frame.
+
+* `systemID`: the ID of a system registered with the Edit Mode. See `Enum.EditModeSystem`.
+* `settingName`: a setting already registered with [AddSystemSettings](#libeditmodeaddsystemsettingssystemid-settings-)
+--]]
+function lib:DisableSystemSetting(systemID, settingName)
+	local settings = internal:GetSystemSettings(systemID)
+	if settings then
+		for _, setting in next, settings do
+			if setting.name == settingName then
+				setting.disabled = true
+				internal.extension:Update(internal.extension.systemID)
+				break
+			end
+		end
 	end
 end
 
@@ -523,7 +615,7 @@ Returns the default position table registered with the frame.
 
 Returns:
 
-* `defaultPosition`: table registered with the frame in [AddFrame](#libeditmodeaddframeframe-callback-default) _(table)_
+* `defaultPosition`: table registered with the frame in [AddFrame](#libeditmodeaddframeframe-callback-default-) _(table)_
 --]]
 function lib:GetFrameDefaultPosition(frame)
 	return lib.frameDefaults[frame]
@@ -577,16 +669,19 @@ end
 
 Table containing the following entries:
 
-| key     | value                         | type                        | required |
-|:--------|:------------------------------|:----------------------------|:---------|
-| kind    | setting type                  | [SettingType](#settingtype) | yes      |
-| name    | label for the setting         | string                      | yes      |
-| default | default value for the setting | any                         | yes      |
-| get     | getter for the current value  | function                    | yes      |
-| set     | setter for the new value      | function                    | yes      |
+| key      | value                                  | type                        | required |
+|:---------|:---------------------------------------|:----------------------------|:---------|
+| kind     | setting type                           | [SettingType](#settingtype) | yes      |
+| name     | label for the setting                  | string                      | yes      |
+| desc     | description for the setting            | string                      | no       |
+| default  | default value for the setting          | any                         | yes      |
+| get      | getter for the current value           | function                    | yes      |
+| set      | setter for the new value               | function                    | yes      |
+| disabled | whether the setting should be disabled | boolean                     | no       |
 
-- The getter passes `layoutName` as the sole argument and expects a value in return.  
-- The setter passes (`layoutName`, `newValue`) and expects no returns.
+- The getter passes `layoutName` as the sole argument and expects a value in return.
+- The setter passes (`layoutName`, `newValue`, `fromReset`) and expects no returns.
+- The description is shown in a tooltip.
 
 Depending on the setting type there are additional required and optional entries:
 
@@ -595,6 +690,7 @@ Depending on the setting type there are additional required and optional entries
 | key       | value                                                                                                                 | type     | required |
 |:----------|:----------------------------------------------------------------------------------------------------------------------|:---------|:---------|
 | values    | indexed table containing [DropdownOption](#dropdownoption)s                                                           | table    | no       |
+| multiple  | whether the dropdown should allow selecing multiple options                                                           | boolean  | no       |
 | generator | [Dropdown `SetupMenu` "generator" (callback)](https://warcraft.wiki.gg/wiki/Patch_11.0.0/API_changes#New_menu_system) | function | no       |
 | height    | max height of the menu                                                                                                | integer  | no       |
 
@@ -611,7 +707,6 @@ Table containing the following entries:
 |:--------|:-------------------------------------------------------------------|---------|:---------|
 | text    | text rendered in the dropdown                                      | string  | yes      |
 | value   | value the text represents, defaults to the text if not provided    | any     | no       |
-| isRadio | turns the dropdown entry into a Radio button, otherwise a Checkbox | boolean | no       |
 
 ### Slider ![](https://img.shields.io/badge/object-teal)
 
@@ -623,6 +718,15 @@ Table containing the following entries:
 | formatter | formatter for the display value   | function | no       |         |
 
 - The formatter passes `value` as the sole argument and expects a number value in return.
+
+### ColorPicker ![](https://img.shields.io/badge/object-teal)
+
+| key        | value                            | type    | required | default |
+|:-----------|:---------------------------------|:--------|:---------|:--------|
+| hasOpacity | whether or not to enable opacity | boolean | no       | false   |
+
+The `default` field and the getter expects a [ColorMixin](https://warcraft.wiki.gg/wiki/ColorMixin) object, and the setter will pass one as its value.  
+Even if `hasOpacity` is set to `false` (which is the default value) the ColorMixin object will contain an alpha value, this is the default behavior of the ColorMixin.
 
 ## ButtonObject ![](https://img.shields.io/badge/object-teal)
 
@@ -641,5 +745,7 @@ One of:
 - `Checkbox`
 - `Slider`
 - `Divider`
+- `ColorPicker`
 --]]
 lib.SettingType = CopyTable(Enum.EditModeSettingDisplayType)
+lib.SettingType.ColorPicker = 10 -- leave some room for blizzard expansion

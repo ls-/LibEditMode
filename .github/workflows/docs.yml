@@ -1,18 +1,19 @@
 name: Generate docs
+
 on:
   push:
-    paths:
-      - '**.lua'
+    tags:
+      - '**'
 
 jobs:
   docs:
     runs-on: ubuntu-latest
     steps:
       - name: Clone project
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Clone wiki
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           repository: ${{ github.repository }}.wiki
           path: .wiki

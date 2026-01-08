@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Clone project
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Package
         uses: BigWigsMods/packager@v2
@@ -26,7 +26,7 @@ jobs:
         run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: LibEditMode-${{ steps.sha.outputs.sha_short }}
           path: .release/
