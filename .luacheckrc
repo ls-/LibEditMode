@@ -21,6 +21,9 @@ exclude_files = {
 }
 
 read_globals = {
+	-- stdlib
+	table = {fields = {'wipe'}},
+
 	-- FrameXML objects
 	'ColorPickerFrame',
 	'CreateUnsecuredObjectPool',
