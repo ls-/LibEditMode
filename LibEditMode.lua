@@ -1,4 +1,4 @@
-local MINOR = 13
+local MINOR = 14
 local lib = LibStub:NewLibrary('LibEditMode', MINOR)
 if not lib then
 	-- this or a newer version is already loaded
@@ -173,9 +173,8 @@ local function onMouseDown(self) -- replacement for EditModeSystemMixin:SelectSy
 		return
 	end
 
-	resetDialogs()
-	resetSelection()
-	EditModeManagerFrame:ClearSelectedSystem() -- possible taint
+	EventRegistry:TriggerEvent('EditModeExternal.hideDialog')
+	EditModeManagerFrame:ClearSelectedSystem() -- taint
 
 	if not self.isSelected then
 		self.parent:SetMovable(true)
@@ -348,7 +347,7 @@ do -- deal with hooks and events
 			resetSelection()
 
 			if internal.dialog then
-				internal.dialog:Reset()
+				internal.dialog:Reset() -- can this be moved to resetDialogs ?
 			end
 
 			local systemID = systemFrame.system
@@ -367,6 +366,12 @@ do -- deal with hooks and events
 		end
 	end)
 end
+
+-- custom global callback hook that all addons that add custom dialogs should respond to
+EventRegistry:RegisterCallback('EditModeExternal.hideDialog', function()
+	resetDialogs()
+	resetSelection()
+end)
 
 --[[ LibEditMode:AddFrame(_frame, callback, default_) ![](https://img.shields.io/badge/function-blue)
 Register a frame to be controlled by the Edit Mode.

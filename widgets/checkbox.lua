@@ -1,4 +1,4 @@
-local MINOR = 13
+local MINOR = 14
 local lib, minor = LibStub('LibEditMode')
 if minor > MINOR then
 	return
@@ -61,6 +61,7 @@ lib.internal:CreatePool(lib.SettingType.Checkbox, function()
 	local frame = CreateFrame('Frame', nil, UIParent, 'EditModeSettingCheckboxTemplate')
 	frame:SetScript('OnLeave', DefaultTooltipMixin.OnLeave)
 	frame:SetScript('OnEnter', showTooltip)
+	frame.Button:SetPropagateMouseMotion(true)
 	return Mixin(frame, checkboxMixin)
 end, function(_, frame)
 	frame:Hide()
